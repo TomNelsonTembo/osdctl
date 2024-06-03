@@ -181,3 +181,39 @@ func TestPermissonDeniedFilter(t *testing.T) {
 	})
 
 }
+
+func TestForSearch(t *testing.T) {
+	// Test Case 1 (Found)
+	testUsername1 := "user-1"
+	testCloudTrailEvent1 := `{"eventVersion": "1.08","userIdentity": {"sessionContext": {"sessionIssuer": {"arn": "arn:aws:iam::123456789012:user/test-12345-6-a7b8-kube-system-capa-controller-manager/123456789012"}}}}`
+
+	// Test Case 2 (Ignored)
+	testUsername2 := "user-2"
+	testCloudTrailEvent2 := `{"eventVersion": "1.08","userIdentity": {"sessionContext": {"sessionIssuer": {"arn": "arn:aws:iam::123456789012:user/test-12345-6-a7b8-kube-system-capa-controller-manager/123456789012"}}}}`
+
+	// Test Case 3 (Ignored)
+	testUsername3 := "user-3"
+	testCloudTrailEvent3 := `{"eventVersion": "1.08","userIdentity": {"sessionContext": {"sessionIssuer": {"arn": "arn:aws:iam::123456789012:user/user-2"}}}}`
+
+	TestLookupOutputs := []*cloudtrail.LookupEventsOutput{
+		{
+			Events: []types.Event{
+				{Username: &testUsername1, CloudTrailEvent: &testCloudTrailEvent1},
+				{Username: &testUsername2, CloudTrailEvent: &testCloudTrailEvent2},
+				{Username: &testUsername3, CloudTrailEvent: &testCloudTrailEvent3},
+			},
+		},
+	}
+	t.Run("Test Filtering by IgnoreList", func(t *testing.T) {
+
+		expected := []types.Event{
+
+			{Username: &testUsername2, CloudTrailEvent: &testCloudTrailEvent2},
+			{Username: &testUsername3, CloudTrailEvent: &testCloudTrailEvent3},
+		}
+
+		filtered := Filters[3](TestLookupOutputs, "user-2")
+		assert.Equal(t, len(expected), len(*filtered), "Filtered events do not match expected results")
+	})
+
+}
